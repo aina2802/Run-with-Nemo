@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milo's Underwater Adventure 🐠</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --water-blue: #00a8ff;
+            --sand-yellow: #fbc531;
+            --coral-pink: #ff7f50;
+            --text-black: #2f3640;
+            --syllable-red: #e84118;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 600px;
+            height: 90vh;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(5px);
+            border-radius: 30px;
+            border: 8px solid white;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        }
+
+        /* --- UI Elements --- */
+        #status-bar {
+            width: 90%;
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+            font-size: 1.5rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        #chase-visual {
+            width: 80%;
+            height: 60px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 30px;
+            position: relative;
+            margin: 10px 0;
+            border: 3px solid white;
+            overflow: hidden;
+        }
+
+        #shark-icon { position: absolute; left: 0; transition: 0.5s ease; font-size: 40px; top: 5px; z-index: 2; }
+        #milo-icon { position: absolute; left: 50%; transition: 0.5s ease; font-size: 40px; top: 5px; z-index: 2; }
+
+        /* --- Screens --- */
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+        }
+
+        .active { display: flex; }
+
+        h1 { font-family: 'Fredoka One', cursive; color: white; font-size: 2.5rem; margin-bottom: 10px; }
+        p { font-size: 1.2rem; color: #fff; }
+
+        /* --- Word Display & Syllables --- */
+        #word-area {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin: 30px 0;
+            min-height: 100px;
+        }
+
+        .word-card {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-size: 1.8rem;
+            box-shadow: 0 5px 0 #ccc;
+            display: flex;
+        }
+
+        .syl-red { color: var(--syllable-red); }
+        .syl-black { color: var(--text-black); }
+
+        /* --- Buttons --- */
+        .btn {
+            background: var(--sand-yellow);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #d4a017;
+            transition: transform 0.1s;
+            font-family: 'Fredoka One', cursive;
+            color: white;
+            margin: 10px;
+        }
+
+        .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #d4a017; }
+        .btn-mic { background: #ff4757; width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+        .btn-mic.recording { animation: pulse 1s infinite; background: #2ed573; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        #feedback { font-size: 1.5rem; font-weight: bold; margin: 15px; height: 30px; }
+        .correct-text { color: #2ed573; }
+        .wrong-text { color: #ff4757; }
+
+        /* --- Decorations --- */
+        .bubble {
+            position: absolute;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            bottom: -100px;
+            animation: rise 10s infinite ease-in;
+            z-index: 0;
+        }
+
+        @keyframes rise {
+            0% { transform: translateY(0) translateX(0); }
+            50% { transform: translateX(50px); }
+            100% { transform: translateY(-1000px) translateX(-50px); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="status-bar">
+        <span>Score: <span id="score-val">0</span></span>
+        <span>Life: <span id="life-val">❤️❤️❤️❤️❤️</span></span>
+    </div>
+
+    <div id="chase-visual">
+        <div id="shark-icon">🦈</div>
+        <div id="milo-icon">🐠</div>
+    </div>
+
+    <!-- Intro Screen -->
+    <div id="intro-screen" class="screen active">
+        <h1>Help Milo! 🐠</h1>
+        <p>A big shark is chasing Milo! <br> Say the sentences to help him swim away!</p>
+        <div style="font-size: 4rem; margin: 20px;">🐠 ... 🦈</div>
+        <button class="btn" onclick="startGame()">Start Game 🎮</button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <h2 id="level-title" style="color: white;">Level 1</h2>
+        <div id="word-area"></div>
+        <div id="feedback"></div>
+        <button id="mic-btn" class="btn btn-mic" onmousedown="startListening()" onmouseup="stopListening()" ontouchstart="startListening()" ontouchend="stopListening()">🎤</button>
+        <p style="color:white; font-size: 0.9rem;">Hold Mic and Speak!</p>
+        <button id="next-btn" class="btn" style="display: none;" onclick="loadLevel()">Next ➡️</button>
+    </div>
+
+    <!-- End Screen -->
+    <div id="end-screen" class="screen">
+        <h1 id="end-title">Game Over!</h1>
+        <p id="end-msg"></p>
+        <div id="final-score" style="font-size: 2rem; color: white; margin: 20px;"></div>
+        <button class="btn" onclick="location.reload()">Play Again 🔄</button>
+    </div>
+</div>
+
+<script>
+    const sentences = [
+        { jumbled: ["name", "Ali", "is", "My"], correct: "my name is ali", syllables: [["name"], ["A", "li"], ["is"], ["My"]] },
+        { jumbled: ["am", "I", "happy"], correct: "i am happy", syllables: [["am"], ["I"], ["hap", "py"]] },
+        { jumbled: ["is", "cat", "This", "a"], correct: "this is a cat", syllables: [["is"], ["cat"], ["This"], ["a"]] },
+        { jumbled: ["I", "like", "fish"], correct: "i like fish", syllables: [["I"], ["like"], ["fish"]] },
+        { jumbled: ["a", "find", "I", "shell"], correct: "i find a shell", syllables: [["a"], ["find"], ["I"], ["shell"]] },
+        { jumbled: ["see", "I", "water"], correct: "i see water", syllables: [["see"], ["I"], ["wa", "ter"]] },
+        { jumbled: ["seaweed", "eats", "Milo"], correct: "milo eats seaweed", syllables: [["sea", "weed"], ["eats"], ["Mi", "lo"]] },
+        { jumbled: ["is", "my", "This", "dog"], correct: "this is my dog", syllables: [["is"], ["my"], ["This"], ["dog"]] },
+        { jumbled: ["see", "I", "a", "snail"], correct: "i see a snail", syllables: [["see"], ["I"], ["a"], ["snail"]] },
+        { jumbled: ["is", "small", "The", "squid"], correct: "the squid is small", syllables: [["is"], ["small"], ["The"], ["squid"]] }
+    ];
+
+    let currentLevel = 0;
+    let score = 0;
+    let mistakes = 0;
+    let miloPos = 50;
+    let sharkPos = 0;
+
+    // Speech Recognition Setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+
+    function startGame() {
+        showScreen('game-screen');
+        loadLevel();
+        createBubbles();
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function loadLevel() {
+        if (currentLevel >= sentences.length) {
+            endGame(true);
+            return;
+        }
+
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('mic-btn').style.display = 'flex';
+        document.getElementById('feedback').innerText = '';
+        document.getElementById('level-title').innerText = `Level ${currentLevel + 1}`;
+        
+        const wordArea = document.getElementById('word-area');
+        wordArea.innerHTML = '';
+
+        const data = sentences[currentLevel];
+        
+        // Map jumbled words to their syllable structures
+        data.jumbled.forEach(word => {
+            const card = document.createElement('div');
+            card.className = 'word-card';
+            
+            // Basic syllable logic for display
+            // In a real app, we'd pre-define syllables for every word
+            // Here we use the structure from the data object
+            const wordLower = word.toLowerCase();
+            const sylData = data.syllables.find(s => s.join('').toLowerCase() === wordLower) || [word];
+            
+            sylData.forEach((syl, index) => {
+                const span = document.createElement('span');
+                span.innerText = syl;
+                span.className = index % 2 === 0 ? 'syl-black' : 'syl-red';
+                card.appendChild(span);
+            });
+
+            wordArea.appendChild(card);
+        });
+    }
+
+    function startListening() {
+        try {
+            recognition.start();
+            document.getElementById('mic-btn').classList.add('recording');
+        } catch(e) {}
+    }
+
+    function stopListening() {
+        recognition.stop();
+        document.getElementById('mic-btn').classList.remove('recording');
+    }
+
+    recognition.onresult = (event) => {
+        const result = event.results[0][0].transcript.toLowerCase().replace(/[.,!]/g, "");
+        checkAnswer(result);
+    };
+
+    function checkAnswer(spoken) {
+        const target = sentences[currentLevel].correct;
+        const feedback = document.getElementById('feedback');
+        
+        // Similiarity Check (Very basic for preschool)
+        const targetWords = target.split(' ');
+        let matchCount = 0;
+        targetWords.forEach(w => { if(spoken.includes(w)) matchCount++; });
+        const scorePct = matchCount / targetWords.length;
+
+        if (scorePct >= 0.7) {
+            feedback.innerHTML = "<span class='correct-text'>Good job! 🎉</span>";
+            score += 10;
+            miloPos = Math.min(miloPos + 15, 85);
+            updatePositions();
+            document.getElementById('score-val').innerText = score;
+            document.getElementById('mic-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'inline-block';
+            currentLevel++;
+            playClap();
+        } else {
+            if (spoken.length < 3) {
+                feedback.innerText = "Say the sentence clearly 😊";
+            } else {
+                feedback.innerHTML = "<span class='wrong-text'>Try again! Shark is coming! 🦈</span>";
+                handleMistake();
+            }
+        }
+    }
+
+    function handleMistake() {
+        mistakes++;
+        sharkPos += 15;
+        updatePositions();
+        
+        let hearts = "";
+        for(let i=0; i < (5 - mistakes); i++) hearts += "❤️";
+        document.getElementById('life-val').innerText = hearts;
+
+        if (mistakes >= 5 || sharkPos >= miloPos) {
+            endGame(false);
+        }
+    }
+
+    function updatePositions() {
+        document.getElementById('shark-icon').style.left = sharkPos + "%";
+        document.getElementById('milo-icon').style.left = miloPos + "%";
+    }
+
+    function endGame(win) {
+        showScreen('end-screen');
+        const title = document.getElementById('end-title');
+        const msg = document.getElementById('end-msg');
+        if(win) {
+            title.innerText = "You Escaped! 🎉";
+            msg.innerText = "Milo is safe in the coral reef!";
+        } else {
+            title.innerText = "Oh no! 🦈";
+            msg.innerText = "The shark caught up to Milo!";
+        }
+        document.getElementById('final-score').innerText = `Final Score: ${score}`;
+    }
+
+    function createBubbles() {
+        for(let i=0; i<15; i++) {
+            const b = document.createElement('div');
+            b.className = 'bubble';
+            b.style.left = Math.random() * 100 + "%";
+            b.style.width = b.style.height = (Math.random() * 30 + 10) + "px";
+            b.style.animationDelay = Math.random() * 5 + "s";
+            document.body.appendChild(b);
+        }
+    }
+
+    // Sound Simulators (Browsers block auto-play audio, so we use Beeps)
+    function playClap() {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    }
+</script>
+</body>
+</html>
